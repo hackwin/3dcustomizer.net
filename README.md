@@ -1,5 +1,7 @@
 # 3dcustomizer.net
-OpenSCAD Customizer is a client-side web app that runs in the web browser using Web Assembly.
+3DCustomizer.net is a client-side web app that runs OpenSCAD in the web browser using Web Assembly.
+
+It is used to generate customized 3D Models for 3d printing.
 
 This repo is for storing examples of running OpenSCAD CLI via Web Assembly.
 
