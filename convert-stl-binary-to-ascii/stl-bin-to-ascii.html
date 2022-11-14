@@ -1,0 +1,119 @@
+<html>
+<head></head>
+<body>
+<h3>Binary to ASCII STL Converter</h3>
+<form>
+Binary STL File: <input type="file" name="files[]">
+</form>
+
+<script>
+
+var originalFilename = "";
+var binaryStlFile = [];
+var asciiStlFile = "";
+
+function basename(path) {
+     return path.replace(/.*\//, '');
+}
+
+function process_data(data){
+	binaryStlFile = new Uint8Array(data);
+	var decoder = new TextDecoder('utf-8');
+	
+	if(decoder.decode(binaryStlFile.subarray(0,5)).toString() == "solid"){
+		console.error("not a binary STL file");
+		return;
+	}
+	
+	asciiStlFile += "solid\n";
+	
+	var temp = binaryStlFile.subarray(80,84);
+	var numTris = new Number(temp[0] + (temp[1] << 8) + (temp[2] << 16) + (temp[3] << 24));
+	console.log('num tris: ' + numTris);
+	
+	temp = binaryStlFile.subarray(84);
+	var modes = ['facet normal','vertex1','vertex2','vertex3'];
+	var mode = 0;
+	
+	for(var i=0; i< temp.length; i += 12){
+		if(mode == 0){
+			asciiStlFile += " facet normal ";
+		}
+		else if(mode == 1){
+			asciiStlFile += "  outer loop \n";
+		}
+		if(mode == 1 || mode == 2 || mode == 3){
+			asciiStlFile += "   vertex";
+		}
+		asciiStlFile += " " + ArrayBuffer4toReal32(temp[i],temp[i+1],temp[i+2],temp[i+3]);
+		asciiStlFile += " " + ArrayBuffer4toReal32(temp[i+4],temp[i+5],temp[i+6],temp[i+7]);
+		asciiStlFile += " " + ArrayBuffer4toReal32(temp[i+8],temp[i+9],temp[i+10],temp[i+11]);
+		asciiStlFile += "\n";
+		
+		if(mode == 3){
+			asciiStlFile += "  endloop\n";
+			asciiStlFile += " endfacet\n";
+			i+=2; // skip the mysterious UINT16 - Attribute byte count, unused?
+		}
+		
+		mode = mode + 1;
+		if(mode == modes.length){
+			mode = 0;
+		}
+	}
+	asciiStlFile += "endsolid";
+	//console.log(asciiStlFile);
+	downloader(asciiStlFile, '', originalFilename.replace(".stl","") + "-ascii.stl");
+}
+
+function ArrayBuffer4toReal32(a,b,c,d){
+	var buf = new ArrayBuffer(4);
+	var view = new DataView(buf);
+	view.setUint8(3, a);
+	view.setUint8(2, b);
+	view.setUint8(1, c);
+	view.setUint8(0, d);
+	var r1 = view.getFloat32(0);
+	return r1.toFixed(6);
+}
+
+function load(evt){
+    if (evt.target.readyState == FileReader.DONE) {
+		binaryStlFile = [];
+		asciiStlFile = "";
+        process_data(evt.target.result);
+    }
+}
+
+function handle(e){
+    var files = this.files;
+    for (var i = 0, f; f = files[i]; i++) {
+        var reader = new FileReader();
+        var fn = basename(f.name);
+		originalFilename = fn;
+        console.log('filename is: '+fn);
+        reader.onloadend = load;
+        reader.readAsArrayBuffer(f);
+    }
+}
+
+function downloader(data, type, name) {
+	let blob = new Blob([data], {type});
+	let url = window.URL.createObjectURL(blob);
+	downloadURI(url, name);
+	window.URL.revokeObjectURL(url);
+}
+
+function downloadURI(uri, name) {
+    let link = document.createElement("a");
+    link.download = name;
+    link.href = uri;
+    link.click();
+}
+
+document.getElementsByName('files[]')[0].onchange = handle;
+
+</script>
+
+</body>
+</html>
